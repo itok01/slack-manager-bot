@@ -27,7 +27,6 @@ func rtm(api, botAPI *slack.Client) {
 		case *slack.MessageEvent:
 			go func() {
 				if ev.Msg.BotID == "" && ev.Msg.User != SlackbotID {
-					fmt.Println(ev.Msg)
 					if !(muteUserList[ev.Msg.User]) {
 						space := regexp.MustCompile(`^ +`)
 						rsvText := space.ReplaceAllString(ev.Msg.Text, "")
@@ -52,12 +51,16 @@ func rtm(api, botAPI *slack.Client) {
 								rsvText = muteCommand.ReplaceAllString(rsvText, "")
 								rsvText = space.ReplaceAllString(rsvText, "")
 								muteTarget := sign.ReplaceAllString(rsvText, "")
-								if muteUserList[muteTarget] {
-									muteUserList[muteTarget] = false
-									postMessage(botAPI, GeneralID, fmt.Sprintf("<@%s> が <@%s> のミュートを解除しました", ev.Msg.User, muteTarget))
+								if _, ok := muteUserList[muteTarget]; ok {
+									if muteUserList[muteTarget] {
+										muteUserList[muteTarget] = false
+										postMessage(botAPI, GeneralID, fmt.Sprintf("<@%s> が <@%s> のミュートを解除しました", ev.Msg.User, muteTarget))
+									} else {
+										muteUserList[muteTarget] = true
+										postMessage(botAPI, GeneralID, fmt.Sprintf("<@%s> が <@%s> をミュートにしました", ev.Msg.User, muteTarget))
+									}
 								} else {
-									muteUserList[muteTarget] = true
-									postMessage(botAPI, GeneralID, fmt.Sprintf("<@%s> が <@%s> をミュートにしました", ev.Msg.User, muteTarget))
+									postMessage(botAPI, ev.Msg.Channel, fmt.Sprintf("<@%s> は存在しないユーザーです！", muteTarget))
 								}
 							}
 						}
