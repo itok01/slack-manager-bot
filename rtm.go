@@ -27,39 +27,43 @@ func rtm(api, botAPI *slack.Client) {
 		case *slack.MessageEvent:
 			go func() {
 				if ev.Msg.BotID == "" && ev.Msg.User != SlackbotID {
-					space := regexp.MustCompile(`^ +`)
-					rsvText := space.ReplaceAllString(ev.Msg.Text, "")
+					fmt.Println(ev.Msg)
+					if !(muteUserList[ev.Msg.User]) {
+						space := regexp.MustCompile(`^ +`)
+						rsvText := space.ReplaceAllString(ev.Msg.Text, "")
 
-					sign := regexp.MustCompile(`[@#<>]`)
+						sign := regexp.MustCompile(`[@#<>]`)
 
-					mention := regexp.MustCompile(fmt.Sprintf(`^<@%s>`, BotID))
+						mention := regexp.MustCompile(fmt.Sprintf(`^<@%s>`, BotID))
 
-					if mention.MatchString(rsvText) && !(muteUserList[ev.Msg.User]) {
-						if _, _, err := api.DeleteMessage(ev.Msg.Channel, ev.Msg.Timestamp); err != nil {
-							fmt.Println(err)
-						}
-						rsvText = mention.ReplaceAllString(rsvText, "")
-						rsvText = space.ReplaceAllString(rsvText, "")
-
-						cleanCommand := regexp.MustCompile(`^/clean`)
-						muteCommand := regexp.MustCompile(`^/mute`)
-
-						if cleanCommand.MatchString(rsvText) {
-							cleanMessage(api, ev.Msg.Channel)
-						} else if muteCommand.MatchString(rsvText) {
-							rsvText = muteCommand.ReplaceAllString(rsvText, "")
+						if mention.MatchString(rsvText) {
+							if _, _, err := api.DeleteMessage(ev.Msg.Channel, ev.Msg.Timestamp); err != nil {
+								fmt.Println(err)
+							}
+							rsvText = mention.ReplaceAllString(rsvText, "")
 							rsvText = space.ReplaceAllString(rsvText, "")
-							muteTarget := sign.ReplaceAllString(rsvText, "")
-							if muteUserList[muteTarget] {
-								muteUserList[muteTarget] = false
-								postMessage(botAPI, GeneralID, fmt.Sprintf("<@%s> のミュートを解除しました", muteTarget))
-							} else {
-								muteUserList[muteTarget] = true
-								postMessage(botAPI, GeneralID, fmt.Sprintf("<@%s> をミュートにしました", muteTarget))
+
+							cleanCommand := regexp.MustCompile(`^/clean`)
+							muteCommand := regexp.MustCompile(`^/mute`)
+
+							if cleanCommand.MatchString(rsvText) {
+								cleanMessage(api, ev.Msg.Channel)
+							} else if muteCommand.MatchString(rsvText) {
+								rsvText = muteCommand.ReplaceAllString(rsvText, "")
+								rsvText = space.ReplaceAllString(rsvText, "")
+								muteTarget := sign.ReplaceAllString(rsvText, "")
+								if muteUserList[muteTarget] {
+									muteUserList[muteTarget] = false
+									postMessage(botAPI, GeneralID, fmt.Sprintf("<@%s> が <@%s> のミュートを解除しました", ev.Msg.User, muteTarget))
+								} else {
+									muteUserList[muteTarget] = true
+									postMessage(botAPI, GeneralID, fmt.Sprintf("<@%s> が <@%s> をミュートにしました", ev.Msg.User, muteTarget))
+								}
 							}
 						}
 					} else {
 						api.DeleteMessage(ev.Msg.Channel, ev.Msg.Timestamp)
+						postMessage(botAPI, MutedUsersMessagesChannelID, fmt.Sprintf("<@%s> が <#%s> で発言しました:\n%s", ev.Msg.User, ev.Msg.Channel, ev.Msg.Text))
 					}
 				}
 			}()

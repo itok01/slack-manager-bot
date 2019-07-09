@@ -15,11 +15,13 @@ const (
 	// BotID is Bot ID
 	BotID string = ""
 	// SlackbotID is slackbot ID
-	SlackbotID string = "USLACKBOT"
+	SlackbotID string = ""
 	// GeneralID is general channel ID
 	GeneralID string = ""
-	// ChannelCreateReportID  channel create report channel id
+	// ChannelCreateReportID is channel create report channel id
 	ChannelCreateReportID string = ""
+	// MutedUsersMessagesChannelID receive muted user's message
+	MutedUsersMessagesChannelID string = ""
 )
 
 func main() {
