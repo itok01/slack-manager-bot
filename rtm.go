@@ -36,9 +36,6 @@ func rtm(api, botAPI *slack.Client) {
 						mention := regexp.MustCompile(fmt.Sprintf(`^<@%s>`, BotID))
 
 						if mention.MatchString(rsvText) {
-							if _, _, err := api.DeleteMessage(ev.Msg.Channel, ev.Msg.Timestamp); err != nil {
-								fmt.Println(err)
-							}
 							rsvText = mention.ReplaceAllString(rsvText, "")
 							rsvText = space.ReplaceAllString(rsvText, "")
 
