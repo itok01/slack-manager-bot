@@ -45,7 +45,7 @@ func rtm(api, botAPI *slack.Client) {
 		switch ev := msg.Data.(type) {
 		case *slack.MessageEvent:
 			go func() {
-				if ev.Msg.BotID == "" && ev.Msg.User != SlackbotID {
+				if ev.Msg.BotID == "" {
 					if !(muteUserList[ev.Msg.User]) {
 						space := regexp.MustCompile(`^ +`)
 						rsvText := space.ReplaceAllString(ev.Msg.Text, "")
