@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  db:
+    image: mysql:latest
+    environment:
+      MYSQL_DATABASE: slack
+      MYSQL_ROOT_PASSWORD: pass
+    ports:
+      - 3306:3306
+    volumes:
+      - ./mysql_data:/var/lib/mysql

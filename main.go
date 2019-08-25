@@ -14,8 +14,6 @@ const (
 	SlackBotToken string = ""
 	// BotID is Bot ID
 	BotID string = ""
-	// SlackbotID is slackbot ID
-	SlackbotID string = ""
 	// GeneralID is general channel ID
 	GeneralID string = ""
 	// ChannelCreateReportID is channel create report channel id

@@ -1,10 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"regexp"
+	"strings"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/nlopes/slack"
 )
 
@@ -20,6 +23,22 @@ func rtm(api, botAPI *slack.Client) {
 
 	for _, user := range users {
 		muteUserList[user.ID] = false
+	}
+
+	db, err := sql.Open("mysql", "root:pass@tcp(localhost:3306)/slack")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	ins, err := db.Prepare("INSERT INTO ng_words(word) VALUES(?)")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	del, err := db.Prepare("DELETE FROM ng_words WHERE word = ?")
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	for msg := range rtm.IncomingEvents {
@@ -41,6 +60,7 @@ func rtm(api, botAPI *slack.Client) {
 
 							cleanCommand := regexp.MustCompile(`^/clean`)
 							muteCommand := regexp.MustCompile(`^/mute`)
+							ngWordCommand := regexp.MustCompile(`^/ng`)
 
 							if cleanCommand.MatchString(rsvText) {
 								cleanMessage(api, ev.Msg.Channel)
@@ -58,6 +78,94 @@ func rtm(api, botAPI *slack.Client) {
 									}
 								} else {
 									postMessage(botAPI, ev.Msg.Channel, fmt.Sprintf("<@%s> は存在しないユーザーです！", muteTarget))
+								}
+							} else if ngWordCommand.MatchString(rsvText) {
+								rsvText = ngWordCommand.ReplaceAllString(rsvText, "")
+								rsvText = space.ReplaceAllString(rsvText, "")
+
+								ngWordAdd := regexp.MustCompile(`^add`)
+								ngWordRemove := regexp.MustCompile(`^remove`)
+								ngWordList := regexp.MustCompile(`^list`)
+								if ngWordAdd.MatchString(rsvText) {
+									rsvText = ngWordAdd.ReplaceAllString(rsvText, "")
+									rsvText = space.ReplaceAllString(rsvText, "")
+
+									if rsvText != "" {
+										var ngWords []string
+
+										rows, err := db.Query("SELECT word FROM ng_words")
+										if err != nil {
+											log.Fatal(err)
+										}
+
+										for rows.Next() {
+											var ngWord string
+											if err := rows.Scan(&ngWord); err != nil {
+												log.Fatal(err)
+											}
+											ngWords = append(ngWords, ngWord)
+										}
+
+										unique := true
+										for _, w := range ngWords {
+											if rsvText == w {
+												unique = false
+												break
+											}
+										}
+
+										if unique {
+											ins.Exec(rsvText)
+											botAPI.PostMessage(ev.Msg.Channel, slack.MsgOptionText("「"+rsvText+"」をNGワードに登録しました。", false))
+										}
+									}
+								} else if ngWordRemove.MatchString(rsvText) {
+									rsvText = ngWordRemove.ReplaceAllString(rsvText, "")
+									rsvText = space.ReplaceAllString(rsvText, "")
+
+									del.Exec(rsvText)
+									botAPI.PostMessage(ev.Msg.Channel, slack.MsgOptionText("「"+rsvText+"」をNGワードから除外しました。", false))
+								} else if ngWordList.MatchString(rsvText) {
+									_, ts, _ := botAPI.PostMessage(ev.Msg.Channel, slack.MsgOptionText("NGワード一覧を表示します。", false))
+									var ngWords []string
+
+									rows, err := db.Query("SELECT word FROM ng_words")
+									if err != nil {
+										log.Fatal(err)
+									}
+
+									for rows.Next() {
+										var ngWord string
+										if err := rows.Scan(&ngWord); err != nil {
+											log.Fatal(err)
+										}
+										ngWords = append(ngWords, ngWord)
+									}
+
+									for _, w := range ngWords {
+										botAPI.PostMessage(ev.Msg.Channel, slack.MsgOptionText(w, false), slack.MsgOptionTS(ts))
+									}
+								}
+							}
+						} else {
+							var ngWords []string
+
+							rows, err := db.Query("SELECT word FROM ng_words")
+							if err != nil {
+								log.Fatal(err)
+							}
+
+							for rows.Next() {
+								var ngWord string
+								if err := rows.Scan(&ngWord); err != nil {
+									log.Fatal(err)
+								}
+								ngWords = append(ngWords, ngWord)
+							}
+
+							for _, w := range ngWords {
+								if strings.Index(ev.Msg.Text, w) != -1 {
+									api.DeleteMessage(ev.Msg.Channel, ev.Msg.Timestamp)
 								}
 							}
 						}
